@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Opens Settings on the Asyntai AI Search tab -->
+    <record id="action_asyntai_search_settings" model="ir.actions.act_window">
+        <field name="name">Asyntai AI Search</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'asyntai_search', 'bin_size': False}</field>
+    </record>
+
+    <!-- Root menu item, so the app shows in the app switcher -->
+    <menuitem
+        id="menu_asyntai_search_root"
+        name="Asyntai AI Search"
+        action="action_asyntai_search_settings"
+        web_icon="asyntai_search,static/description/icon.png"
+        groups="base.group_system"
+        sequence="101"/>
+</odoo>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The widget script, on every website page.
+
+         Loaded in the head rather than after the load event, unlike our chat
+         widget: this bar sits in the header, and a late swap means the
+         visitor watches the site's own search box get replaced in front of
+         them. The tag is only printed while Asyntai has said the bar may
+         render, so a site whose allowance ran out shows its own search box
+         and nothing of ours. -->
+    <template id="asyntai_search_script" inherit_id="website.layout" name="Asyntai AI Search script">
+        <xpath expr="//head" position="inside">
+            <t t-set="asyntai_search_attrs" t-value="request.env['asyntai.search'].sudo().page_attrs()"/>
+            <script t-if="asyntai_search_attrs"
+                    t-att-src="asyntai_search_attrs.get('src')"
+                    async="async"
+                    t-att-data-asyntai-id="asyntai_search_attrs.get('data-asyntai-id')"
+                    t-att-data-replace="asyntai_search_attrs.get('data-replace')"
+                    t-att-data-accent="asyntai_search_attrs.get('data-accent')"
+                    t-att-data-placeholder="asyntai_search_attrs.get('data-placeholder')"></script>
+        </xpath>
+    </template>
+
+    <!-- The container the bar renders into when it sits in the header.
+
+         Every Odoo header layout calls this placeholder, on desktop and in
+         the mobile menu, which is what lets the bar appear in the header of
+         any theme without editing that theme. The site's own search box is
+         a sibling added to the same placeholder, and the two never show at
+         once: placement 'auto' replaces that box when it is there and adds
+         this one only when it is not, and frontend.css hides Odoo's own
+         search item from any list this one is printed into.
+
+         `_layout` is the header's own variable, 'modal' on the headers that
+         show search as an icon. It is unset on the others, which QWeb reads
+         as None. -->
+    <template id="asyntai_search_header_bar" inherit_id="website.placeholder_header_search_box" name="Asyntai AI Search header bar" priority="90">
+        <xpath expr="." position="inside">
+            <t t-set="asyntai_search_header" t-value="request.env['asyntai.search'].sudo().header_bar(layout=_layout)"/>
+            <li t-if="asyntai_search_header" t-attf-class="asyntai-search-item #{_item_class or ''}">
+                <div class="asyntai-search-header" data-asyntai-search=""></div>
+            </li>
+        </xpath>
+    </template>
+</odoo>

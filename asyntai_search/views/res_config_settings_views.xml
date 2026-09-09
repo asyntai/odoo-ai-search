@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The Asyntai AI Search tab in Settings.
+
+         The panel at the top is filled in by static/src/js/admin.js from
+         /asyntai_search/status, because what it shows (live, setting up,
+         blocked) changes without anybody pressing Save. The fields below it
+         are ordinary settings that Odoo loads and saves itself. -->
+    <record id="res_config_settings_view_form_asyntai_search" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.asyntai_search</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Asyntai AI Search" string="Asyntai AI Search" name="asyntai_search" groups="base.group_system">
+                    <block title="Asyntai AI Search" name="asyntai_search_connect_block">
+                        <div id="asyntai-search-wrap" class="o_asyntai_search">
+                            <div id="asyntai-search-alert" class="asyntai-alert" style="display:none;"></div>
+                            <div id="asyntai-search-panel">
+                                <div class="asyntai-panel"><p class="asyntai-detail">Loading...</p></div>
+                            </div>
+                        </div>
+                    </block>
+                    <block title="Where the bar appears" name="asyntai_search_placement_block">
+                        <setting id="asyntai_search_placement_setting" string="Where the bar goes" help="Automatic always ends with exactly one bar on the page: it replaces the header search box when your site shows one, and adds the bar to the header when it does not.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <div class="col-12">
+                                        <field name="asyntai_search_placement" class="o_light_label w-100"/>
+                                    </div>
+                                </div>
+                                <div class="row mt8">
+                                    <label class="col-lg-4" string="Search box to replace" for="asyntai_search_selector"/>
+                                    <field name="asyntai_search_selector" placeholder="Leave empty and we find it"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="asyntai_search_look_setting" string="How the bar looks" help="Leave both empty: visitors see the placeholder in their own language, and the colour follows your Asyntai dashboard.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label class="col-lg-4" string="Placeholder text" for="asyntai_search_placeholder"/>
+                                    <field name="asyntai_search_placeholder" placeholder="In the visitor's language"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label class="col-lg-4" string="Accent colour" for="asyntai_search_accent"/>
+                                    <field name="asyntai_search_accent" placeholder="#111111"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>
