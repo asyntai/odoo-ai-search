@@ -1,0 +1,31 @@
+/* Asyntai AI Search - the container the bar renders into when it sits in the
+   site header. The bar itself is drawn by the Asyntai script. */
+.asyntai-search-item {
+    display: flex;
+    align-items: center;
+    flex: 1 1 260px;
+    min-width: 220px;
+    max-width: 440px;
+}
+
+.asyntai-search-item .asyntai-search-header {
+    width: 100%;
+}
+
+/* The mobile menu lays items out in a column, where a flex basis would
+   squeeze the bar into a strip. */
+.o_navbar_mobile .asyntai-search-item,
+.offcanvas .asyntai-search-item {
+    flex: none;
+    max-width: none;
+    margin-bottom: 1rem;
+}
+
+/* Exactly one search bar. Odoo prints its own search item into the same list
+   this one goes into: a form on most headers, an icon that opens a modal on
+   some. Wherever this item is present, Odoo's own is hidden, so choosing
+   "Add the bar to the site header" never leaves two boxes side by side. */
+ul:has(> .asyntai-search-item) > li:has(> a[data-bs-target="#o_search_modal"]),
+ul:has(> .asyntai-search-item) > li:has(> form.o_searchbar_form) {
+    display: none !important;
+}

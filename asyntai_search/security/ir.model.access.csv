@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_asyntai_search_state_system,asyntai.search.state system,model_asyntai_search_state,base.group_system,1,1,1,1
