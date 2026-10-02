@@ -49,8 +49,15 @@ CLOCK_SKEW = 300
 # Longest description sent per product. Asyntai truncates again.
 MAX_DESCRIPTION = 2000
 
-TAG_RE = re.compile(r'<[^>]+>')
-SCRIPT_RE = re.compile(r'<(script|style)[\s\S]*?</\1>', re.I)
+# Layers of escaping undone before tags are removed. Real data has one or two.
+MAX_DECODE_PASSES = 5
+
+# A tag only when "<" is followed by a letter or "/", so "5 < 10 cm" keeps
+# its words once the text has been decoded.
+TAG_RE = re.compile(r'</?[a-zA-Z][^<>]*>')
+OPEN_TAG_AT_END_RE = re.compile(r'</?[a-zA-Z][^<>]*$')
+SCRIPT_RE = re.compile(r'<(script|style)\b[\s\S]*?(?:</\1\s*>|$)', re.I)
+COMMENT_RE = re.compile(r'<!--[\s\S]*?(?:-->|$)')
 SPACE_RE = re.compile(r'[\s ]+')
 
 
@@ -380,7 +387,7 @@ class AsyntaiSearchController(http.Controller):
 
     def _one(self, template, website):
         """One product, as a shopper would see it, or None."""
-        name = (template.name or '').strip()
+        name = self._plain(template.name or '')
         if not name:
             return None
 
@@ -398,15 +405,17 @@ class AsyntaiSearchController(http.Controller):
         if template.barcode:
             out['ean'] = template.barcode
 
-        price, special, currency, quantity = self._price(template, website)
+        price, special, currency, _template_qty = self._price(template, website)
         if price is not None:
             out['price'] = price
         if special is not None:
             out['special'] = special
         out['currency'] = currency or self._currency(website)
+        quantity, in_stock = self._stock(template, website)
         if quantity is not None:
             out['quantity'] = quantity
-            out['stock_status'] = 'In stock' if quantity > 0 else 'Out of stock'
+        if in_stock is not None:
+            out['stock_status'] = 'In stock' if in_stock else 'Out of stock'
 
         categories = []
         for category in getattr(template, 'public_categ_ids', []):
@@ -424,6 +433,49 @@ class AsyntaiSearchController(http.Controller):
             out['image_url'] = base + website.image_url(template, 'image_512')
 
         return out
+
+    def _stock(self, template, website):
+        """(quantity, in_stock) for one product, each None when unknown.
+
+        Read per variant, the way the shop page reads it. The template-level
+        combination info that _price uses answers free_qty 0 for EVERY
+        product once Inventory is installed, because a template is not a
+        variant; that sent a whole stocked catalogue as out of stock.
+
+        Products Inventory does not count (services, consumables, kits) give
+        (None, None): the shop always sells them. A counted product at 0 that
+        the shop still sells ("Continue selling when out-of-stock") gives
+        (None, True), so the feed never says 0 and In stock together.
+        """
+        try:
+            variants = template.product_variant_ids
+            if not variants or 'free_qty' not in variants._fields:
+                return None, None  # Inventory is not installed
+
+            if 'is_storable' in template._fields:  # 18 and later
+                storable = bool(template.is_storable)
+            else:  # 16 and 17
+                storable = (getattr(template, 'detailed_type', None) or template.type) == 'product'
+            if not storable:
+                return None, None
+
+            total = 0.0
+            for variant in variants.sudo():
+                if hasattr(website, '_get_product_available_qty'):
+                    free = website._get_product_available_qty(variant)
+                elif hasattr(website, '_get_warehouse_available'):
+                    free = variant.with_context(warehouse=website._get_warehouse_available()).free_qty
+                else:
+                    free = variant.free_qty
+                total += max(0.0, float(free or 0))
+
+            quantity = int(total)
+            if quantity <= 0 and getattr(template, 'allow_out_of_stock_order', False):
+                return None, True
+            return quantity, quantity > 0
+        except Exception as e:
+            _logger.info('Asyntai AI Search: stock of %s unknown: %s', template.id, e)
+            return None, None
 
     def _price(self, template, website):
         """(price, special, currency, quantity) with the website's pricelist
@@ -460,13 +512,32 @@ class AsyntaiSearchController(http.Controller):
 
     @staticmethod
     def _plain(html):
-        text = SCRIPT_RE.sub(' ', str(html or ''))
-        text = TAG_RE.sub(' ', text)
-        try:
-            import html as html_module
-            text = html_module.unescape(text)
-        except Exception:
-            pass
+        """HTML reduced to the text a shopper would read. Used for names too.
+
+        Entities are decoded FIRST, until nothing changes, and tags are
+        removed after that. In the other order an escaped value ("&lt;b&gt;")
+        comes back as live markup once the strip is done.
+        """
+        import html as html_module
+
+        text = str(html or '')
+        for _ in range(MAX_DECODE_PASSES):
+            decoded = html_module.unescape(text)
+            if decoded == text:
+                break
+            text = decoded
+
+        # Until nothing changes: removing one tag can join the pieces around
+        # it into another ("<scr<b>ipt>").
+        for _ in range(MAX_DECODE_PASSES):
+            before = text
+            text = SCRIPT_RE.sub(' ', text)
+            text = COMMENT_RE.sub(' ', text)
+            text = TAG_RE.sub(' ', text)
+            text = OPEN_TAG_AT_END_RE.sub(' ', text)
+            if text == before:
+                break
+
         text = SPACE_RE.sub(' ', text).strip()
         return text[:MAX_DESCRIPTION]
 
