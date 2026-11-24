@@ -30,6 +30,8 @@ import werkzeug.exceptions
 from odoo import http, release
 from odoo.http import request
 
+from ..models.asyntai_search import current_website
+
 _logger = logging.getLogger(__name__)
 
 # Odoo 19 renamed the JSON-RPC route type and warns about the old name on
@@ -323,7 +325,7 @@ class AsyntaiSearchController(http.Controller):
         if not sig or not hmac.compare_digest(expected, sig):
             return 403, {'ok': False, 'error': 'Bad signature.'}
 
-        website = request.env['website'].get_current_website()
+        website = current_website(request.env)
         store = {
             'name': website.name or request.env.company.name or '',
             'url': model.site_url(),
