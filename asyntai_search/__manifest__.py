@@ -5,7 +5,7 @@
 
 {
     'name': 'Asyntai - AI Search',
-    'version': '19.0.1.0.1',
+    'version': '20.0.1.0.1',
     'category': 'Website',
     'summary': 'AI search bar that understands what visitors mean. Finds products, pages and blog posts, not only exact words.',
     'description': """
@@ -35,7 +35,7 @@ Open Asyntai AI Search in the app switcher and press Connect.
     'license': 'LGPL-3',
     'depends': ['base', 'website'],
     'data': [
-        'security/ir.model.access.csv',
+        'security/ir.access.csv',
         'data/ir_cron.xml',
         'views/menu_views.xml',
         'views/res_config_settings_views.xml',

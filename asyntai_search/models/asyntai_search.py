@@ -36,6 +36,24 @@ _logger = logging.getLogger(__name__)
 ODOO_VERSION = 'Odoo %s' % release.version.split('+')[0]
 
 
+def current_website(env):
+    """The website a request is for, on every Odoo version.
+
+    Odoo 20 removed website.get_current_website(); the website is now
+    env.website, which is empty outside a website request (the settings
+    screen, a cron). Then the first website is used, as older Odoo did.
+    """
+    Website = env['website']
+    if hasattr(Website, 'get_current_website'):
+        return Website.get_current_website()
+    website = getattr(env, 'website', None) or Website.browse()
+    if not website and env.context.get('host_id'):
+        website = Website.browse(env.context['host_id'])
+    if not website:
+        website = Website.sudo().search([], limit=1)
+    return website
+
+
 class AsyntaiSearchState(models.Model):
     """One row per key. Read and written only through AsyntaiSearch below."""
     _name = 'asyntai.search.state'
@@ -99,7 +117,12 @@ class AsyntaiSearch(models.AbstractModel):
 
     @api.model
     def _param(self, key, default=''):
-        value = self.env['ir.config_parameter'].sudo().get_param(key, default)
+        params = self.env['ir.config_parameter'].sudo()
+        # Odoo 20 replaced get_param with typed getters (get_str and friends).
+        if hasattr(params, 'get_str'):
+            value = params.get_str(key, default)
+        else:
+            value = params.get_param(key, default)
         return value if isinstance(value, str) else default
 
     @api.model
@@ -201,7 +224,7 @@ class AsyntaiSearch(models.AbstractModel):
         if placement != 'auto':
             return placement
 
-        website = website or self.env['website'].get_current_website()
+        website = website or current_website(self.env)
         try:
             shows_search = bool(website.is_view_active('website.header_search_box'))
         except Exception:
@@ -447,7 +470,7 @@ class AsyntaiSearch(models.AbstractModel):
         The website's own domain when the owner set one, otherwise the address
         Odoo last saw itself at. Both are what a visitor would type.
         """
-        website = self.env['website'].get_current_website()
+        website = current_website(self.env)
         domain = (website.domain or '').strip().rstrip('/')
         if domain and not domain.startswith('http'):
             domain = 'https://' + domain
